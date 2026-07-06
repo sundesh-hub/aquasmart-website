@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AquaSmart — Dual-Source IoT Water Harvesting</title>
+<meta name="description" content="AquaSmart combines rainwater harvesting and atmospheric water generation with sensor-verified quality control, monitored end-to-end over IoT.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#071019;
+    --surface:#0e1e2b;
+    --surface-2:#122636;
+    --line: rgba(140,190,205,0.14);
+    --rain:#4d8dfb;
+    --vapor:#22d3c4;
+    --safe:#4ade80;
+    --danger:#f87171;
+    --text:#eaf3f5;
+    --muted:#8faab3;
+    --muted-2:#5f7d87;
+    --display: 'Space Grotesk', sans-serif;
+    --body: 'Inter', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--ink);
+    color:var(--text);
+    font-family:var(--body);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  a{color:inherit;}
+  img{max-width:100%; display:block;}
+  .wrap{max-width:1180px; margin:0 auto; padding:0 32px;}
+  @media(max-width:640px){ .wrap{padding:0 20px;} }
+
+  /* subtle background texture: contour lines evoking hydrology maps */
+  .bg-contours{
+    position:fixed; inset:0; z-index:0; pointer-events:none; opacity:0.5;
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(77,141,251,0.08), transparent 40%),
+      radial-gradient(circle at 85% 75%, rgba(34,211,196,0.08), transparent 45%);
+  }
+
+  /* NAV */
+  header{
+    position:sticky; top:0; z-index:50;
+    background:rgba(7,16,25,0.82);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  nav{display:flex; align-items:center; justify-content:space-between; padding:16px 32px; max-width:1180px; margin:0 auto;}
+  .brand{display:flex; align-items:center; gap:10px; font-family:var(--display); font-weight:600; font-size:18px; letter-spacing:-0.01em;}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:linear-gradient(135deg,var(--rain),var(--vapor)); box-shadow:0 0 12px var(--vapor);}
+  .navlinks{display:flex; gap:28px; font-size:14px; color:var(--muted);}
+  .navlinks a{text-decoration:none; transition:color .2s;}
+  .navlinks a:hover{color:var(--text);}
+  .navcta{display:flex; gap:10px;}
+  @media(max-width:800px){ .navlinks{display:none;} }
+
+  .btn{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:10px 18px; border-radius:8px; font-size:14px; font-weight:500;
+    text-decoration:none; border:1px solid var(--line); transition:all .2s;
+    font-family:var(--body);
+  }
+  .btn-primary{background:linear-gradient(135deg,var(--vapor),var(--rain)); color:#04141c; border:none; font-weight:600;}
+  .btn-primary:hover{filter:brightness(1.08); transform:translateY(-1px);}
+  .btn-ghost{color:var(--text); background:transparent;}
+  .btn-ghost:hover{background:var(--surface-2); border-color:rgba(140,190,205,0.3);}
+
+  /* HERO */
+  .hero{position:relative; z-index:1; padding:88px 0 60px;}
+  .hero-grid{display:grid; grid-template-columns:1.1fr 0.9fr; gap:56px; align-items:center;}
+  @media(max-width:900px){ .hero-grid{grid-template-columns:1fr;} }
+  .eyebrow{
+    font-family:var(--mono); font-size:12px; letter-spacing:0.12em; text-transform:uppercase;
+    color:var(--vapor); display:flex; align-items:center; gap:8px; margin-bottom:18px;
+  }
+  .eyebrow::before{content:''; width:16px; height:1px; background:var(--vapor);}
+  h1{
+    font-family:var(--display); font-weight:700; font-size:clamp(34px,5vw,54px);
+    line-height:1.06; letter-spacing:-0.02em; margin-bottom:22px;
+  }
+  h1 .accent{background:linear-gradient(135deg,var(--vapor),var(--rain)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .lede{font-size:17px; color:var(--muted); max-width:480px; margin-bottom:32px;}
+  .hero-ctas{display:flex; gap:14px; flex-wrap:wrap; margin-bottom:36px;}
+  .hero-stats{display:flex; gap:32px; flex-wrap:wrap;}
+  .stat b{display:block; font-family:var(--mono); font-size:22px; color:var(--text);}
+  .stat span{font-size:12px; color:var(--muted-2); text-transform:uppercase; letter-spacing:0.06em;}
+
+  .hero-visual{position:relative;}
+  .hero-visual img{border-radius:16px; border:1px solid var(--line); box-shadow:0 30px 80px -20px rgba(0,0,0,0.6);}
+  .hero-visual .tag{
+    position:absolute; bottom:-16px; left:-16px; background:var(--surface-2); border:1px solid var(--line);
+    padding:10px 14px; border-radius:10px; font-size:12px; font-family:var(--mono); color:var(--vapor);
+    box-shadow:0 12px 30px rgba(0,0,0,0.4);
+  }
+  @media(max-width:900px){ .hero-visual .tag{display:none;} }
+
+  /* SECTION scaffolding */
+  section{position:relative; z-index:1; padding:80px 0;}
+  .section-head{max-width:640px; margin-bottom:48px;}
+  .kicker{font-family:var(--mono); font-size:12px; text-transform:uppercase; letter-spacing:0.12em; color:var(--muted-2); margin-bottom:10px;}
+  h2{font-family:var(--display); font-size:clamp(26px,3.4vw,36px); font-weight:600; letter-spacing:-0.015em; margin-bottom:14px;}
+  .section-head p{color:var(--muted); font-size:15.5px;}
+
+  /* PROBLEM */
+  .problem{border-top:1px solid var(--line);}
+  .problem-grid{display:grid; grid-template-columns:1fr 1fr; gap:48px; align-items:start;}
+  @media(max-width:860px){ .problem-grid{grid-template-columns:1fr;} }
+  .gap-viz{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:28px;}
+  .gap-row{margin-bottom:20px;}
+  .gap-row:last-child{margin-bottom:0;}
+  .gap-label{display:flex; justify-content:space-between; font-size:13px; color:var(--muted); margin-bottom:8px; font-family:var(--mono);}
+  .gap-bar{height:10px; border-radius:6px; background:rgba(140,190,205,0.12); overflow:hidden;}
+  .gap-fill{height:100%; border-radius:6px;}
+  .fill-supply{width:52%; background:linear-gradient(90deg,var(--rain),var(--vapor));}
+  .fill-demand{width:100%; background:rgba(248,113,113,0.55);}
+  .gap-note{margin-top:18px; font-size:13px; color:var(--muted-2); border-top:1px solid var(--line); padding-top:16px;}
+  .problem-copy p{color:var(--muted); font-size:15px; margin-bottom:16px;}
+  .problem-copy strong{color:var(--text);}
+
+  /* HOW IT WORKS — signature diagram */
+  .how{border-top:1px solid var(--line);}
+  .flow-wrap{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:36px 24px;}
+  .flow-svg{width:100%; height:auto; display:block;}
+  .flow-legend{display:flex; gap:24px; flex-wrap:wrap; margin-top:24px; font-size:13px; color:var(--muted);}
+  .legend-item{display:flex; align-items:center; gap:8px;}
+  .legend-dot{width:10px; height:10px; border-radius:3px;}
+
+  /* SENSOR CARDS */
+  .sensor-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-top:8px;}
+  @media(max-width:800px){ .sensor-grid{grid-template-columns:1fr;} }
+  .sensor-card{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:22px;}
+  .sensor-card .name{font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px;}
+  .sensor-card .readout{font-family:var(--mono); font-size:28px; color:var(--vapor); margin-bottom:6px;}
+  .sensor-card .thresh{font-size:12.5px; color:var(--muted-2);}
+
+  /* TECH */
+  .tech{border-top:1px solid var(--line);}
+  .tech-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:14px; overflow:hidden;}
+  @media(max-width:860px){ .tech-grid{grid-template-columns:repeat(2,1fr);} }
+  .tech-cell{background:var(--surface); padding:24px 20px;}
+  .tech-cell .label{font-size:11.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted-2); margin-bottom:8px; font-family:var(--mono);}
+  .tech-cell .val{font-size:14.5px; color:var(--text); font-weight:500;}
+
+  /* RESULTS TABLE */
+  .results{border-top:1px solid var(--line);}
+  table{width:100%; border-collapse:collapse; font-size:14.5px;}
+  th{text-align:left; font-family:var(--mono); font-size:11.5px; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted-2); font-weight:500; padding:12px 16px; border-bottom:1px solid var(--line);}
+  td{padding:14px 16px; border-bottom:1px solid var(--line); color:var(--muted);}
+  td:first-child{color:var(--text);}
+  .pass{color:var(--safe); font-family:var(--mono); font-size:13px;}
+  .table-wrap{background:var(--surface); border:1px solid var(--line); border-radius:14px; overflow:hidden;}
+  .table-wrap table{margin:0;}
+  .table-wrap tr:last-child td{border-bottom:none;}
+
+  /* APP */
+  .app-section{border-top:1px solid var(--line);}
+  .app-grid{display:grid; grid-template-columns:0.8fr 1.2fr; gap:56px; align-items:center;}
+  @media(max-width:860px){ .app-grid{grid-template-columns:1fr;} .app-grid .phone{order:-1; max-width:280px; margin:0 auto;} }
+  .app-grid img{border-radius:22px; border:1px solid var(--line); box-shadow:0 30px 70px -20px rgba(0,0,0,0.6);}
+  .feature-list{list-style:none; margin-top:20px;}
+  .feature-list li{display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); font-size:15px; color:var(--muted);}
+  .feature-list li:last-child{border-bottom:none;}
+  .feature-list .icon{color:var(--vapor); font-family:var(--mono); flex-shrink:0;}
+
+  /* SDG */
+  .sdg{border-top:1px solid var(--line);}
+  .sdg-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:16px;}
+  @media(max-width:700px){ .sdg-grid{grid-template-columns:repeat(2,1fr);} }
+  .sdg-card{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:20px;}
+  .sdg-num{font-family:var(--mono); color:var(--vapor); font-size:13px; margin-bottom:8px;}
+  .sdg-card .t{font-size:14px; font-weight:600; margin-bottom:6px;}
+  .sdg-card .d{font-size:12.5px; color:var(--muted-2);}
+
+  /* TEAM */
+  .team{border-top:1px solid var(--line);}
+  .team-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:20px;}
+  @media(max-width:800px){ .team-grid{grid-template-columns:1fr;} }
+  .team-card{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:24px;}
+  .team-card .avatar{width:44px; height:44px; border-radius:50%; background:linear-gradient(135deg,var(--rain),var(--vapor)); margin-bottom:14px; display:flex; align-items:center; justify-content:center; font-family:var(--display); font-weight:700; color:#04141c;}
+  .team-card .n{font-weight:600; font-size:15.5px; margin-bottom:2px;}
+  .team-card .r{font-size:13px; color:var(--muted-2);}
+  .supervisor-note{margin-top:20px; font-size:13.5px; color:var(--muted-2);}
+
+  /* CTA / DOWNLOAD */
+  .cta{border-top:1px solid var(--line);}
+  .cta-box{
+    background:linear-gradient(135deg, rgba(77,141,251,0.12), rgba(34,211,196,0.10));
+    border:1px solid var(--line); border-radius:18px; padding:52px 40px; text-align:center;
+  }
+  .cta-box h2{margin-bottom:12px;}
+  .cta-box p{color:var(--muted); max-width:480px; margin:0 auto 28px;}
+  .cta-ctas{display:flex; gap:14px; justify-content:center; flex-wrap:wrap;}
+
+  footer{border-top:1px solid var(--line); padding:36px 0; position:relative; z-index:1;}
+  .foot-grid{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; font-size:13px; color:var(--muted-2);}
+  .foot-links{display:flex; gap:20px;}
+  .foot-links a{text-decoration:none; transition:color .2s;}
+  .foot-links a:hover{color:var(--text);}
+
+  ::selection{background:var(--vapor); color:#04141c;}
+</style>
+</head>
+<body>
+<div class="bg-contours"></div>
+
+<header>
+  <nav>
+    <div class="brand"><span class="dot"></span> AquaSmart</div>
+    <div class="navlinks">
+      <a href="#how">How it works</a>
+      <a href="#tech">Tech</a>
+      <a href="#results">Results</a>
+      <a href="#app">App</a>
+      <a href="#team">Team</a>
+    </div>
+    <div class="navcta">
+      <a class="btn btn-ghost" href="https://github.com/fahadsidd590/aquasmart" target="_blank" rel="noopener">GitHub</a>
+      <a class="btn btn-primary" href="#app">Get the app</a>
+    </div>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <div class="eyebrow">Dual-source IoT water harvesting</div>
+        <h1>Two water sources.<br>One <span class="accent">sensor-verified</span> supply.</h1>
+        <p class="lede">AquaSmart pulls water from rain and from the air itself, tests every liter for pH, turbidity, and TDS in real time, and only lets safe water reach the tank — monitored and controlled from your phone.</p>
+        <div class="hero-ctas">
+          <a class="btn btn-primary" href="#app">Download the app</a>
+          <a class="btn btn-ghost" href="https://github.com/fahadsidd590/aquasmart" target="_blank" rel="noopener">View source on GitHub</a>
+        </div>
+        <div class="hero-stats">
+          <div class="stat"><b>2</b><span>Water sources</span></div>
+          <div class="stat"><b>3</b><span>Quality sensors</span></div>
+          <div class="stat"><b>1.2s</b><span>Valve response</span></div>
+          <div class="stat"><b>48h+</b><span>Continuous uptime</span></div>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <img src="assets/hero-rig.jpg" alt="AquaSmart hardware prototype with live dashboard">
+        <div class="tag">● system online — live telemetry</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="problem" id="problem">
+    <div class="wrap">
+      <div class="problem-grid">
+        <div class="problem-copy">
+          <div class="kicker">Why this exists</div>
+          <h2>Karachi's water math doesn't close</h2>
+          <p>The city's municipal network supplies roughly <strong>550–650 million gallons a day</strong>, against a demand of over <strong>1,200 MGD</strong>. The shortfall gets filled by unregulated tanker networks — expensive, and with no guarantee of what's actually in the water.</p>
+          <p>Rainwater harvesting alone isn't enough either: Karachi's entire monsoon lands in a <strong>four-to-six-week window</strong>, leaving RWH systems idle the rest of the year. Meanwhile the same coastal climate holds <strong>60–80% humidity</strong> nearly year-round — a second water source most systems never touch.</p>
+        </div>
+        <div class="gap-viz">
+          <div class="gap-row">
+            <div class="gap-label"><span>Municipal supply</span><span>550–650 MGD</span></div>
+            <div class="gap-bar"><div class="gap-fill fill-supply"></div></div>
+          </div>
+          <div class="gap-row">
+            <div class="gap-label"><span>Urban demand</span><span>1,200+ MGD</span></div>
+            <div class="gap-bar"><div class="gap-fill fill-demand"></div></div>
+          </div>
+          <div class="gap-note">The gap is filled informally — at a cost, and without quality assurance. AquaSmart targets the household scale of that gap directly.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="how" id="how">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="kicker">How it works</div>
+        <h2>Every drop is judged before it's stored</h2>
+        <p>Rain and humid air are both routed through the same quality checkpoint. Nothing reaches the storage tank until pH, turbidity, and TDS sensors agree it's safe.</p>
+      </div>
+      <div class="flow-wrap">
+        <svg class="flow-svg" viewBox="0 0 1000 300" xmlns="http://www.w3.org/2000/svg">
+          <!-- Rain source -->
+          <g>
+            <circle cx="90" cy="80" r="34" fill="none" stroke="#4d8dfb" stroke-width="1.5" opacity="0.5"/>
+            <text x="90" y="86" text-anchor="middle" font-family="IBM Plex Mono" font-size="20" fill="#4d8dfb">☔</text>
+            <text x="90" y="132" text-anchor="middle" font-family="Inter" font-size="12.5" fill="#8faab3">Rainwater</text>
+          </g>
+          <!-- Vapor source -->
+          <g>
+            <circle cx="90" cy="220" r="34" fill="none" stroke="#22d3c4" stroke-width="1.5" opacity="0.5"/>
+            <text x="90" y="226" text-anchor="middle" font-family="IBM Plex Mono" font-size="20" fill="#22d3c4">≋</text>
+            <text x="90" y="272" text-anchor="middle" font-family="Inter" font-size="12.5" fill="#8faab3">Humid air (AWG)</text>
+          </g>
+          <!-- lines to gate -->
+          <path d="M124,80 C 260,80 260,150 380,150" fill="none" stroke="#4d8dfb" stroke-width="2" opacity="0.55"/>
+          <path d="M124,220 C 260,220 260,150 380,150" fill="none" stroke="#22d3c4" stroke-width="2" opacity="0.55"/>
+          <!-- Sensor gate -->
+          <rect x="380" y="105" width="150" height="90" rx="12" fill="#0e1e2b" stroke="#8faab3" stroke-opacity="0.3"/>
+          <text x="455" y="130" text-anchor="middle" font-family="IBM Plex Mono" font-size="10.5" fill="#5f7d87" letter-spacing="1">SENSOR GATE</text>
+          <text x="455" y="152" text-anchor="middle" font-family="IBM Plex Mono" font-size="12.5" fill="#eaf3f5">pH · NTU · TDS</text>
+          <text x="455" y="172" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" fill="#22d3c4">arbitration logic</text>
+          <!-- lines to outcome -->
+          <path d="M530,135 C 650,135 650,80 760,80" fill="none" stroke="#4ade80" stroke-width="2" opacity="0.7"/>
+          <path d="M530,165 C 650,165 650,220 760,220" fill="none" stroke="#f87171" stroke-width="2" opacity="0.55"/>
+          <!-- Safe tank -->
+          <g>
+            <circle cx="800" cy="80" r="34" fill="none" stroke="#4ade80" stroke-width="1.5" opacity="0.6"/>
+            <text x="800" y="87" text-anchor="middle" font-family="IBM Plex Mono" font-size="18" fill="#4ade80">✓</text>
+            <text x="800" y="132" text-anchor="middle" font-family="Inter" font-size="12.5" fill="#eaf3f5">Storage tank</text>
+          </g>
+          <!-- Drain -->
+          <g>
+            <circle cx="800" cy="220" r="34" fill="none" stroke="#f87171" stroke-width="1.5" opacity="0.5"/>
+            <text x="800" y="227" text-anchor="middle" font-family="IBM Plex Mono" font-size="18" fill="#f87171">✕</text>
+            <text x="800" y="272" text-anchor="middle" font-family="Inter" font-size="12.5" fill="#8faab3">Drainage</text>
+          </g>
+        </svg>
+        <div class="flow-legend">
+          <div class="legend-item"><span class="legend-dot" style="background:#4d8dfb"></span> Rainwater harvesting mode</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#22d3c4"></span> Atmospheric water generation (Peltier)</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#4ade80"></span> Passed quality check</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#f87171"></span> Diverted to drain</div>
+        </div>
+      </div>
+
+      <div class="sensor-grid">
+        <div class="sensor-card">
+          <div class="name">pH level</div>
+          <div class="readout">±0.18</div>
+          <div class="thresh">calibration accuracy achieved (target ±0.3)</div>
+        </div>
+        <div class="sensor-card">
+          <div class="name">Turbidity</div>
+          <div class="readout">NTU</div>
+          <div class="thresh">optical sensor, continuous read</div>
+        </div>
+        <div class="sensor-card">
+          <div class="name">TDS</div>
+          <div class="readout">ppm</div>
+          <div class="thresh">within ±10% target accuracy</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tech" id="tech">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="kicker">Under the hood</div>
+        <h2>Built on a two-controller, cloud-connected stack</h2>
+        <p>An ESP32 master handles connectivity and decision logic; an Arduino UNO runs the sensor hub. Everything syncs to the cloud in near real time.</p>
+      </div>
+      <div class="tech-grid">
+        <div class="tech-cell"><div class="label">Master controller</div><div class="val">ESP32, dual-core 240MHz, Wi-Fi</div></div>
+        <div class="tech-cell"><div class="label">Sensor hub</div><div class="val">Arduino UNO (ATmega328P)</div></div>
+        <div class="tech-cell"><div class="label">AWG element</div><div class="val">TEC1-17310 Peltier ×2</div></div>
+        <div class="tech-cell"><div class="label">Water routing</div><div class="val">12V solenoid valves + opto-relays</div></div>
+        <div class="tech-cell"><div class="label">Cloud database</div><div class="val">MongoDB, time-series telemetry</div></div>
+        <div class="tech-cell"><div class="label">API layer</div><div class="val">Node.js / Express REST + MQTT</div></div>
+        <div class="tech-cell"><div class="label">Mobile app</div><div class="val">React Native, iOS &amp; Android</div></div>
+        <div class="tech-cell"><div class="label">Admin portal</div><div class="val">React.js + Node.js, real-time device control</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="results" id="results">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="kicker">Validated in testing</div>
+        <h2>Measured against targets, not just demoed</h2>
+        <p>Every claim below was checked against a defined pass/fail threshold during system testing.</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Metric</th><th>Target</th><th>Achieved</th></tr></thead>
+          <tbody>
+            <tr><td>pH calibration accuracy</td><td>±0.3 pH units</td><td class="pass">±0.18 pH units — pass</td></tr>
+            <tr><td>TDS measurement accuracy</td><td>±10% ppm</td><td class="pass">Within range — pass</td></tr>
+            <tr><td>Valve actuation latency</td><td>&lt; 2 seconds</td><td class="pass">1.2 seconds — pass</td></tr>
+            <tr><td>Notification latency</td><td>&lt; 2 seconds</td><td class="pass">~1.34 seconds — pass</td></tr>
+            <tr><td>AWG condensation</td><td>Visible output</td><td class="pass">Achieved — pass</td></tr>
+            <tr><td>Continuous operation</td><td>48 hours</td><td class="pass">48+ hours stable — pass</td></tr>
+            <tr><td>Contamination prevention</td><td>No unsafe water stored</td><td class="pass">Verified — pass</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="app-section" id="app">
+    <div class="wrap app-grid">
+      <div class="phone">
+        <img src="assets/app-screen.jpg" alt="AquaSmart mobile app home screen">
+      </div>
+      <div>
+        <div class="kicker">Mobile app</div>
+        <h2>Your tank, your readings, your control</h2>
+        <p style="color:var(--muted); font-size:15px;">A single cross-platform app for the household, and a separate admin web portal for fleet-level device management.</p>
+        <ul class="feature-list">
+          <li><span class="icon">→</span> Live pH, turbidity, and TDS readings, updated in near real time</li>
+          <li><span class="icon">→</span> Push alerts the moment contamination or a system fault is detected</li>
+          <li><span class="icon">→</span> Manual valve override and AWG mode control</li>
+          <li><span class="icon">→</span> Filter history and maintenance reminders</li>
+          <li><span class="icon">→</span> Admin web portal for multi-device, multi-user oversight</li>
+        </ul>
+        <div class="hero-ctas" style="margin-top:24px;">
+          <a class="btn btn-primary" href="downloads/AquaSmart.apk" download rel="noopener">Download APK</a>
+          <a class="btn btn-ghost" href="https://github.com/fahadsidd590/aquasmart" target="_blank" rel="noopener">Source on GitHub</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sdg">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="kicker">Alignment</div>
+        <h2>Built around four UN Sustainable Development Goals</h2>
+      </div>
+      <div class="sdg-grid">
+        <div class="sdg-card"><div class="sdg-num">SDG 3</div><div class="t">Good health &amp; well-being</div><div class="d">Contamination rejection cuts exposure to waterborne illness.</div></div>
+        <div class="sdg-card"><div class="sdg-num">SDG 6</div><div class="t">Clean water &amp; sanitation</div><div class="d">Year-round freshwater access with continuous purity monitoring.</div></div>
+        <div class="sdg-card"><div class="sdg-num">SDG 9</div><div class="t">Industry &amp; innovation</div><div class="d">Edge computing, psychrometric control, and cloud connectivity in one hybrid system.</div></div>
+        <div class="sdg-card"><div class="sdg-num">SDG 11</div><div class="t">Sustainable cities</div><div class="d">Reduces household dependence on overburdened municipal supply.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="team" id="team">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="kicker">Team</div>
+        <h2>Built by three Computer Engineering students</h2>
+        <p>Bahria University, Karachi Campus — Final Year Project, Department of Computer Engineering.</p>
+      </div>
+      <div class="team-grid">
+        <div class="team-card"><div class="avatar">SB</div><div class="n">Sundesh Kumar Bobby</div><div class="r">Computer Engineering</div></div>
+        <div class="team-card"><div class="avatar">TM</div><div class="n">Taha Muzaffar</div><div class="r">Computer Engineering</div></div>
+        <div class="team-card"><div class="avatar">HA</div><div class="n">Hira Azam</div><div class="r">Computer Engineering</div></div>
+      </div>
+      <div class="supervisor-note">Supervised by Engr. Ali Ahmed · Project ID BUKC-CE-2026-10</div>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="wrap">
+      <div class="cta-box">
+        <h2>Want to see it running?</h2>
+        <p>Full technical documentation, firmware, and app source are on GitHub. The mobile app is available as a direct APK download.</p>
+        <div class="cta-ctas">
+          <a class="btn btn-primary" href="https://github.com/fahadsidd590/aquasmart" target="_blank" rel="noopener">View on GitHub</a>
+          <a class="btn btn-ghost" href="mailto:your-email@example.com">Contact the team</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot-grid">
+    <div>© 2026 AquaSmart — Bahria University, Karachi Campus</div>
+    <div class="foot-links">
+      <a href="https://github.com/fahadsidd590/aquasmart" target="_blank" rel="noopener">GitHub</a>
+      <a href="#app">APK</a>
+      <a href="mailto:your-email@example.com">Contact</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
